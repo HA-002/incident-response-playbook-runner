@@ -1,0 +1,299 @@
+{
+  "name": "Incident Response - Watchdog",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "1b952ccb-fc24-446b-bb18-04a66e2dbd7d",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Incident Response"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1659867153",
+          "cachedResultName": "incidents"
+        },
+        "options": {}
+      },
+      "id": "2b3be11c-93e5-4637-b351-ad71656da94e",
+      "name": "Read Incidents",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HMnPl11epGk5Qw6U",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const HOUR_MS = 60 * 60 * 1000;\nconst now = Date.now();\nconst MAX_PER_RUN = 10;\n\nfunction parseDate(value) {\n  if (value === null || value === undefined) return null;\n  if (typeof value === 'number') {\n    // Google Sheets serial date (days since 1899-12-30)\n    if (value > 20000 && value < 100000) {\n      const ms = Math.round((value - 25569) * 86400 * 1000);\n      return isNaN(ms) ? null : ms;\n    }\n    return null;\n  }\n  const str = String(value).trim();\n  if (!str) return null;\n  const ms = Date.parse(str);\n  return isNaN(ms) ? null : ms;\n}\n\nconst results = [];\nfor (const item of $input.all()) {\n  const row = item.json || {};\n  if (Object.keys(row).length === 0) continue;\n\n  const incidentId = String(row.incident_id ?? '').trim();\n  if (!incidentId) continue;\n\n  const statusRaw = String(row.status ?? '').trim();\n  const status = statusRaw || 'Open';\n  if (status.toLowerCase() === 'closed') continue;\n\n  const timeMs = parseDate(row.time);\n  if (timeMs === null) continue;\n  if (now - timeMs <= HOUR_MS) continue;\n\n  const lastReminderMs = parseDate(row.last_reminder);\n  if (lastReminderMs !== null && now - lastReminderMs <= HOUR_MS) continue;\n\n  results.push({\n    json: {\n      incident_id: incidentId,\n      incident_type: String(row.incident_type ?? '').trim() || 'Unknown',\n      status: status,\n      time: row.time,\n      hours_open: Math.round(((now - timeMs) / HOUR_MS) * 10) / 10,\n    },\n  });\n\n  if (results.length >= MAX_PER_RUN) break;\n}\n\nreturn results;"
+      },
+      "id": "890d9917-9beb-4a51-b19e-ab43b025e7ab",
+      "name": "Find Overdue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-incident-id",
+              "leftValue": "={{ $json.incident_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fcd7ccac-734e-43bc-97e2-0b9b140ad484",
+      "name": "Any Overdue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "8882339400:AAF07D5d6Uar-tanvpj4EZdg-EUzTdhUq6Y",
+        "text": "=Reminder: incident {{ $json.incident_id }} ({{ $json.incident_type }}) is still {{ $json.status }} after {{ $json.hours_open }} hours.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3b83d90c-a975-45b8-add8-b52e2a8c31b8",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        0
+      ],
+      "webhookId": "0a2574d6-8f08-4cb1-8897-8b8933cd84b3",
+      "credentials": {
+        "telegramApi": {
+          "id": "nryCnh3KH7ionbuN",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Incident Response"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1659867153",
+          "cachedResultName": "incidents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "incident_id": "={{ $('Loop Over Items').item.json.incident_id }}",
+            "last_reminder": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "incident_id"
+          ],
+          "schema": [
+            {
+              "id": "incident_id",
+              "displayName": "incident_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_reminder",
+              "displayName": "last_reminder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "8eed4317-83ce-4bc6-a2e0-f8d79ddabfb8",
+      "name": "Update Last Reminder",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HMnPl11epGk5Qw6U",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9c0925b3-f373-45c7-ab39-eb666850e456",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        896,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Read Incidents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Incidents": {
+      "main": [
+        [
+          {
+            "node": "Find Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Overdue": {
+      "main": [
+        [
+          {
+            "node": "Any Overdue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Overdue?": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Update Last Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Last Reminder": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "69a6a117-5664-41bc-81d4-a495e879f144",
+  "meta": {
+    "instanceId": "58bf84d073b91cf86b87b0e1f2a1f08fdb3ce83d8303defbfc1a824d5fc561fd"
+  },
+  "nodeGroups": [],
+  "id": "5MLm5zUSQg6xmntH",
+  "tags": []
+}
