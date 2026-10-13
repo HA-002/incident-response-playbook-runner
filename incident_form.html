@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Incident Response Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--b1:#062a66;--b2:#08408a;--b3:#041d4a;--navy:#031a40;--glass:rgba(255,255,255,.14);--line:rgba(255,255,255,.28);--mut:rgba(255,255,255,.78)}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{min-height:100vh;font-family:Tajawal,Tahoma,Arial,sans-serif;color:#fff;overflow-x:hidden;
+       background:radial-gradient(ellipse at 50% 35%,var(--b2) 0%,var(--b1) 55%,var(--b3) 100%) fixed;
+       display:grid;place-items:center;padding:28px 16px;position:relative}
+
+
+  /* the glass card */
+  .card{position:relative;z-index:1;width:100%;max-width:440px;background:var(--glass);border:1px solid var(--line);
+        border-radius:26px;padding:30px 30px 26px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+        box-shadow:0 20px 50px rgba(0,25,80,.35)}
+  .logo{text-align:center;font-weight:800;font-size:20px;margin:0 0 20px}
+  h1{margin:0 0 4px;font-size:26px;font-weight:800}
+  .hint{margin:0 0 6px;font-size:13.5px;color:var(--mut)}
+  label{display:block;font-size:12.5px;font-weight:700;margin:14px 0 6px}
+  input[type=text],input[type=email],textarea{width:100%;padding:11px 14px;border-radius:8px;border:0;
+        background:#fff;color:#1b2a41;font:inherit;font-size:14px;font-weight:500}
+  input:focus,textarea:focus{outline:3px solid rgba(255,255,255,.45)}
+  textarea{min-height:120px;resize:vertical}
+  ::placeholder{color:#8a97ab}
+  button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:8px;background:var(--navy);color:#fff;
+        font:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:.15s}
+  button:hover{background:#04264f;transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,20,60,.35)}
+  .divider{text-align:center;font-size:12.5px;color:var(--mut);margin:18px 0 10px}
+  .badges{display:flex;gap:10px;justify-content:center}
+  .badge{flex:1;background:#fff;color:#1b2a41;border-radius:6px;padding:8px 4px;text-align:center;font-size:12px;font-weight:700}
+  .note{margin:14px 0 0;text-align:center;font-size:12px;color:var(--mut)}
+  @media(max-width:560px){.card{padding:24px 20px}}
+</style>
+</head>
+<body>
+
+  <!-- IMPORTANT: replace the action URL with your n8n Production webhook URL -->
+  <form id="incidentForm" class="card" method="POST" action="https://YOUR-N8N-HOST/webhook/incident-report">
+    <div class="logo">🛡️ Incident Response</div>
+    <h1>Report an Incident</h1>
+    <p class="hint">Describe what happened. The security team is notified right away.</p>
+
+    <label for="reporter_name">Your name</label>
+    <input id="reporter_name" type="text" name="reporter_name" maxlength="100" required placeholder="Full name">
+
+    <label for="reporter_email">Your email</label>
+    <input id="reporter_email" type="email" name="reporter_email" maxlength="254" required placeholder="username@gmail.com">
+
+    <label for="description">What happened?</label>
+    <textarea id="description" name="description" minlength="10" maxlength="2000" required
+      placeholder="Example: I clicked a link in an email and typed my password."></textarea>
+
+    <button type="submit" id="submitBtn">Submit Report</button>
+    <p class="note" id="status" role="status" aria-live="polite" hidden>Submitting your report and classifying it... please wait.</p>
+
+    <div class="divider">we classify it into</div>
+    <div class="badges">
+      <span class="badge">Phishing</span>
+      <span class="badge">Device</span>
+      <span class="badge">Malware</span>
+      <span class="badge">Account</span>
+    </div>
+    <p class="note">Never include passwords or other secrets. Use test data only for this demo.</p>
+  </form>
+
+<script>
+  // Loading state: disable the button and show a message while the workflow runs.
+  const form = document.getElementById('incidentForm');
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('status');
+  form.addEventListener('submit', function () {
+    if (!form.checkValidity()) return;      // let the browser show its own validation messages
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+    btn.style.opacity = '.7';
+    btn.style.cursor = 'wait';
+    status.hidden = false;
+  });
+  // If the user comes back with the browser's back button, reset the button.
+  window.addEventListener('pageshow', function () {
+    btn.disabled = false; btn.textContent = 'Submit Report'; btn.style.opacity = ''; btn.style.cursor = ''; status.hidden = true;
+  });
+</script>
+</body>
+</html>
