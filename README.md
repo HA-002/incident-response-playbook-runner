@@ -68,5 +68,5 @@ Phishing, Lost or Stolen Device, Malware Suspected, Account Compromise, Other.
 ## Screenshots
 
 ![Report form](workflows/screenshots/1_report_form.png)
-![Result page (sample data)](screenshots/2_result_page_sample.png)
+![Result page (sample data)](workflows/screenshots/2_result_page_sample.png)
 ![Workflow](workflows/screenshots/3_workflow_diagram.png)
