@@ -101,7 +101,7 @@
     },
     {
       "parameters": {
-        "chatId": "8882339400:AAF07D5d6Uar-tanvpj4EZdg-EUzTdhUq6Y",
+        "chatId": "Chat ID",
         "text": "=Reminder: incident {{ $json.incident_id }} ({{ $json.incident_type }}) is still {{ $json.status }} after {{ $json.hours_open }} hours.",
         "additionalFields": {
           "appendAttribution": false
@@ -290,9 +290,7 @@
     "binaryMode": "separate"
   },
   "versionId": "69a6a117-5664-41bc-81d4-a495e879f144",
-  "meta": {
-    "instanceId": "58bf84d073b91cf86b87b0e1f2a1f08fdb3ce83d8303defbfc1a824d5fc561fd"
-  },
+  
   "nodeGroups": [],
   "id": "5MLm5zUSQg6xmntH",
   "tags": []
